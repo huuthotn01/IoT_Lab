@@ -27,10 +27,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Newtonsoft.Json;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 using M2MqttUnity;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Examples for the M2MQTT library (https://github.com/eclipse/paho.mqtt.m2mqtt),
@@ -41,6 +41,17 @@ namespace M2MqttUnity.Examples
         public string temp {get; set;}
         public string humid {get; set;}
     }
+
+    public class LEDState {
+        public string device {get; set;}
+        public string status {get; set;}
+    }
+
+    public class PumpState {
+        public string device {get; set;}
+        public string status {get; set;}
+    }
+
     /// <summary>
     /// Script for testing M2MQTT with a Unity UI
     /// </summary>
@@ -57,15 +68,29 @@ namespace M2MqttUnity.Examples
         public InputField addressInputFieldPass;
         public InputField portInputField;
         public Button connectButton;
+        public string sensorTopic = "";
+        public string msg_from_sensor = "";
+        public string ledTopic = "";
+        public string pumpTopic = "";
         public InputField InputFieldTemp;
         public InputField InputFieldHumid;
+        public Image LED_img;
+        public Image Pump_img;
+        public Sprite img_off;
+        public Sprite img_on;
 
         private List<string> eventMessages = new List<string>();
         private bool updateUI = false;
 
         public void TestPublish()
         {
-            client.Publish("/bkiot/1915347/status", System.Text.Encoding.UTF8.GetBytes("Test message"), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, false);
+            SensorData sensor_info = new SensorData
+            {
+                temp = "10",
+                humid = "59"
+            };
+            string sensor_info_json = JsonConvert.SerializeObject(sensor_info);
+            client.Publish(sensorTopic, System.Text.Encoding.UTF8.GetBytes(sensor_info_json), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
             Debug.Log("Test message published");
             AddUiMessage("Test message published.");
         }
@@ -116,7 +141,7 @@ namespace M2MqttUnity.Examples
         {
             if (consoleInputField != null)
             {
-                consoleInputField.text += msg + "\n";
+                consoleInputField.text = msg + "\n";
                 updateUI = true;
             }
         }
@@ -132,28 +157,30 @@ namespace M2MqttUnity.Examples
             base.OnConnected();
             
             SetUiMessage("Connected to broker on " + brokerAddress + "\n");
-            SubscribeTopics();
-            if (InputFieldHumid != null && InputFieldTemp != null) {
-                InputFieldTemp.text = "55°C";
-                InputFieldHumid.text = "17%";
-            }
+            // SubscribeTopics();
+
             SignIn.SetActive(false);
             TestUI.SetActive(true);
             /*if (autoTest)
             {
                 TestPublish();
             }*/
+            // Update();
+            //TestPublish();
         }
 
         protected override void SubscribeTopics()
         {
-            client.Subscribe(new string[] { "/bkiot/1915347/status" }, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
-            Debug.Log("Test");
+            if (sensorTopic != "")
+            {
+                client.Subscribe(new string[] { sensorTopic }, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
+            }
+            Debug.Log("Test Sub Topic");
         }
 
         protected override void UnsubscribeTopics()
         {
-            client.Unsubscribe(new string[] { "/bkiot/1915347/status" });
+            client.Unsubscribe(new string[] { sensorTopic });
         }
 
         protected override void OnConnectionFailed(string errorMessage)
@@ -164,6 +191,58 @@ namespace M2MqttUnity.Examples
         protected override void OnDisconnected()
         {
             AddUiMessage("Disconnected.");
+        }
+
+        public void ChangeLedState()
+        {
+            if (LED_img.sprite == img_off)
+            {
+                LEDState led_info = new LEDState
+                {
+                    device = "LED",
+                    status = "ON"
+                };
+                string led_info_json = JsonConvert.SerializeObject(led_info);
+                client.Publish(ledTopic, System.Text.Encoding.UTF8.GetBytes(led_info_json), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
+                LED_img.sprite = img_on;
+            } else 
+            {
+                LEDState led_info = new LEDState
+                {
+                    device = "LED",
+                    status = "OFF"
+                };
+                string led_info_json = JsonConvert.SerializeObject(led_info);
+                client.Publish(ledTopic, System.Text.Encoding.UTF8.GetBytes(led_info_json), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
+                LED_img.sprite = img_off;
+            }
+            // Debug.Log("LED clicked");
+        }
+
+        public void ChangePumpState()
+        {
+            if (Pump_img.sprite == img_off)
+            {
+                PumpState pump_info = new PumpState
+                {
+                    device = "PUMP",
+                    status = "ON"
+                };
+                string pump_info_json = JsonConvert.SerializeObject(pump_info);
+                client.Publish(pumpTopic, System.Text.Encoding.UTF8.GetBytes(pump_info_json), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
+                Pump_img.sprite = img_on;
+            } else 
+            {
+                PumpState pump_info = new PumpState
+                {
+                    device = "PUMP",
+                    status = "OFF"
+                };
+                string pump_info_json = JsonConvert.SerializeObject(pump_info);
+                client.Publish(pumpTopic, System.Text.Encoding.UTF8.GetBytes(pump_info_json), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, true);
+                Pump_img.sprite = img_off;
+            }
+            // Debug.Log("Pump clicked");
         }
 
         protected override void OnConnectionLost()
@@ -215,20 +294,30 @@ namespace M2MqttUnity.Examples
             SignIn.SetActive(true);
             TestUI.SetActive(false);
             SetUiMessage("Ready.");
+            sensorTopic = "/bkiot/1915347/status";
+            ledTopic = "/bkiot/1915347/led";
+            pumpTopic = "/bkiot/1915347/pump";
+            LED_img.sprite = img_off;
+            Pump_img.sprite = img_off;
             updateUI = true;
             base.Start();
         }
 
         protected override void DecodeMessage(string topic, byte[] message)
         {
-            Debug.Log("Hello Test");
             string msg = System.Text.Encoding.UTF8.GetString(message);
             Debug.Log("Received: " + msg);
             StoreMessage(msg);
-            if (topic == "/bkiot/1915347/status")
+            SensorData sensor_data_json = JsonConvert.DeserializeObject<SensorData>(msg);
+            if (InputFieldHumid != null && InputFieldTemp != null) {
+                InputFieldTemp.text = sensor_data_json.temp + "°C";
+                InputFieldHumid.text = sensor_data_json.humid + "%";
+            }
+            if (topic == sensorTopic)
             {
                 if (autoTest)
                 {
+                    Debug.Log("Auto Test True");
                     autoTest = false;
                     Disconnect();
                 }
@@ -261,6 +350,7 @@ namespace M2MqttUnity.Examples
             {
                 UpdateUI();
             }
+            // Debug.Log("Test Update");
         }
 
         private void OnDestroy()

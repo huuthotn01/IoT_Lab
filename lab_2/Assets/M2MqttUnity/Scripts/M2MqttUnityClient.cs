@@ -28,7 +28,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Adaptation for Unity of the M2MQTT library (https://github.com/eclipse/paho.mqtt.m2mqtt),
@@ -117,6 +116,8 @@ namespace M2MqttUnity
         protected virtual void OnConnected()
         {
             Debug.LogFormat("Connected to {0}:{1}...\n", brokerAddress, brokerPort.ToString());
+
+            SubscribeTopics();
 
             if (ConnectionSucceeded != null)
             {
@@ -233,6 +234,7 @@ namespace M2MqttUnity
         {
             foreach (MqttMsgPublishEventArgs msg in backMessageQueue)
             {
+                Debug.Log("In Foreach Base");
                 DecodeMessage(msg.Topic, msg.Message);
             }
             backMessageQueue.Clear();
