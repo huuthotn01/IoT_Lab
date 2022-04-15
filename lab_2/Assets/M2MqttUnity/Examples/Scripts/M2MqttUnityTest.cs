@@ -25,6 +25,8 @@ SOFTWARE.
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Timers;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Newtonsoft.Json;
@@ -62,6 +64,8 @@ namespace M2MqttUnity.Examples
         [Header("User Interface")]
         public GameObject SignIn;
         public GameObject TestUI;
+        public InputField signin_watch;
+        public InputField dashboard_watch;
         public InputField consoleInputField;
         public InputField addressInputField;
         public InputField addressInputFieldUsername;
@@ -81,6 +85,9 @@ namespace M2MqttUnity.Examples
 
         private List<string> eventMessages = new List<string>();
         private bool updateUI = false;
+
+        // private System.Windows.Forms.Timer aTimer = new System.Windows.Forms.Timer();
+        // private System.Timers.Timer aTimer = null;
 
         public void TestPublish()
         {
@@ -293,15 +300,33 @@ namespace M2MqttUnity.Examples
         {
             SignIn.SetActive(true);
             TestUI.SetActive(false);
+            // time_watch.text = "Timer";
             SetUiMessage("Ready.");
             sensorTopic = "/bkiot/1915347/status";
             ledTopic = "/bkiot/1915347/led";
             pumpTopic = "/bkiot/1915347/pump";
             LED_img.sprite = img_off;
             Pump_img.sprite = img_off;
+            //IntervalTimeWatch();
             updateUI = true;
             base.Start();
         }
+
+        /*private void IntervalTimeWatch()
+        {
+            // System.Windows.Forms.Timer aTimer = new System.Windows.Forms.Timer();
+            aTimer = new System.Timers.Timer(1000);
+            aTimer.Elapsed += OnTimedEvent;
+            aTimer.Enabled = true;
+            aTimer.SynchronizingObject = (System.ComponentModel.ISynchronizeInvoke)this;
+            aTimer.AutoReset = true;
+        }
+
+        private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+        {
+            time_watch.text = e.SignalTime.ToString();
+            Debug.Log(e.SignalTime.ToString());
+        }*/
 
         protected override void DecodeMessage(string topic, byte[] message)
         {
@@ -334,6 +359,14 @@ namespace M2MqttUnity.Examples
             AddUiMessage("Received: " + msg);
         }
 
+        public void LogOut() 
+        {
+            Debug.Log("Log Out");
+            SignIn.SetActive(true);
+            TestUI.SetActive(false);
+            Disconnect();
+        }
+
         protected override void Update()
         {
             base.Update(); // call ProcessMqttEvents()
@@ -351,6 +384,8 @@ namespace M2MqttUnity.Examples
                 UpdateUI();
             }
             // Debug.Log("Test Update");
+            if (signin_watch != null) signin_watch.text = System.DateTime.Now.ToString("HH:mm:ss");
+            if (dashboard_watch != null) dashboard_watch.text = System.DateTime.Now.ToString("HH:mm:ss");
         }
 
         private void OnDestroy()
